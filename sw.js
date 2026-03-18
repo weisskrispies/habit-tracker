@@ -1,9 +1,11 @@
-const CACHE_NAME = 'habit-tracker-v2';
+const CACHE_NAME = 'habit-tracker-v3';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
+  './firebase-sync.js',
+  './sync-init.js',
   './manifest.json'
 ];
 

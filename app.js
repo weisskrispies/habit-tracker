@@ -765,4 +765,10 @@ function init() {
   render();
 }
 
+// Expose reloadState for firebase sync
+window.reloadState = function() {
+  state = loadState();
+  render();
+};
+
 document.addEventListener('DOMContentLoaded', init);

@@ -19,6 +19,10 @@
         <button class="header__date" id="dateDisplay">Today</button>
       </div>
       <div class="header__actions">
+        <button class="sync-btn hidden" id="syncBtn" aria-label="Sign in to sync">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          <span id="syncLabel">Sign in</span>
+        </button>
         <button class="icon-btn" id="settingsBtn" aria-label="Settings">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
@@ -70,6 +74,22 @@
           </button>
         </div>
         <div class="modal__body">
+          <section class="settings-section" id="syncSection">
+            <h3>Sync</h3>
+            <div id="syncStatus">
+              <p class="form-hint">Sign in with Google to sync habits across devices.</p>
+              <button class="btn btn--primary" id="googleSignInBtn" style="margin-top:10px">
+                Sign in with Google
+              </button>
+            </div>
+            <div id="syncSignedIn" class="hidden">
+              <div class="goal-item">
+                <span class="goal-item__label" id="syncUserName">Signed in</span>
+                <button class="btn btn--outline" id="signOutBtn">Sign out</button>
+              </div>
+              <p class="form-hint" style="margin-top:8px">Your habits sync automatically across all devices.</p>
+            </div>
+          </section>
           <section class="settings-section">
             <h3>Goals</h3>
             <div class="goals-list" id="goalsList"></div>
@@ -188,6 +208,7 @@
   </div>
 
   <script src="app.js"></script>
+  <script type="module" src="sync-init.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');

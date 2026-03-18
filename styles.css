@@ -889,3 +889,24 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 ::selection { background: var(--accent); color: var(--bg); }
+
+/* ========== Sync Button ========== */
+.sync-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: var(--font);
+}
+
+.sync-btn:hover { border-color: var(--text-secondary); color: var(--text); }
+.sync-btn.signed-in { border-color: var(--green); color: var(--green); }
+.sync-btn.signed-in:hover { background: var(--green-bg); }
