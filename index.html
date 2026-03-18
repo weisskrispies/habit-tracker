@@ -2,68 +2,62 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Habit Tracker</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#007aff">
+  <meta name="theme-color" content="#ffffff">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
   <div class="app">
-    <!-- Header -->
     <header class="header">
-      <h1 class="header__title">Habit Tracker</h1>
+      <div>
+        <h1 class="header__title">Habits</h1>
+        <button class="header__date" id="dateDisplay">Today</button>
+      </div>
       <div class="header__actions">
         <button class="icon-btn" id="settingsBtn" aria-label="Settings">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode">
-          <svg class="theme-icon-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          <svg class="theme-icon-dark" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         </button>
       </div>
     </header>
 
-    <!-- Date Navigation -->
-    <div class="date-nav">
-      <button class="icon-btn" id="prevDay" aria-label="Previous day">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <button class="date-nav__today" id="dateDisplay">Today - Mar 17</button>
-      <button class="icon-btn" id="nextDay" aria-label="Next day">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
+    <!-- Date strip -->
+    <div class="date-strip" id="dateStrip">
+      <!-- Rendered by JS -->
     </div>
 
     <!-- Tab Navigation -->
     <nav class="tabs">
       <button class="tab active" data-tab="today">Today</button>
-      <button class="tab" data-tab="week">This Week</button>
+      <button class="tab" data-tab="week">Week</button>
       <button class="tab" data-tab="stats">Stats</button>
     </nav>
 
     <!-- Today View -->
     <main class="view" id="todayView">
-      <div class="habits-list" id="habitsList">
-        <!-- Habit cards rendered by JS -->
-      </div>
+      <div class="habits-list" id="habitsList"></div>
+      <button class="add-habit-btn" id="addHabitBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add habit
+      </button>
     </main>
 
     <!-- Week View -->
     <main class="view hidden" id="weekView">
-      <div class="week-grid" id="weekGrid">
-        <!-- Weekly grid rendered by JS -->
-      </div>
+      <div class="week-grid" id="weekGrid"></div>
     </main>
 
     <!-- Stats View -->
     <main class="view hidden" id="statsView">
-      <div class="stats-container" id="statsContainer">
-        <!-- Stats rendered by JS -->
-      </div>
+      <div class="stats-container" id="statsContainer"></div>
     </main>
 
     <!-- Settings Modal -->
@@ -72,29 +66,25 @@
         <div class="modal__header">
           <h2>Settings</h2>
           <button class="icon-btn modal__close" aria-label="Close">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="modal__body">
           <section class="settings-section">
             <h3>Goals</h3>
-            <div class="goals-list" id="goalsList">
-              <!-- Goal editors rendered by JS -->
-            </div>
+            <div class="goals-list" id="goalsList"></div>
           </section>
           <section class="settings-section">
             <h3>Reminders</h3>
-            <div class="reminders-list" id="remindersList">
-              <!-- Reminder settings rendered by JS -->
-            </div>
-            <button class="btn btn--secondary" id="requestNotifBtn">Enable Notifications</button>
+            <div class="reminders-list" id="remindersList"></div>
+            <button class="btn btn--outline" id="requestNotifBtn">Enable notifications</button>
           </section>
           <section class="settings-section">
             <h3>Data</h3>
             <div class="data-actions">
-              <button class="btn btn--secondary" id="exportBtn">Export Data</button>
-              <label class="btn btn--secondary">
-                Import Data
+              <button class="btn btn--outline" id="exportBtn">Export</button>
+              <label class="btn btn--outline">
+                Import
                 <input type="file" accept=".json" id="importInput" hidden>
               </label>
             </div>
@@ -103,21 +93,94 @@
       </div>
     </div>
 
+    <!-- Add/Edit Habit Modal -->
+    <div class="modal-overlay hidden" id="habitModal">
+      <div class="modal modal--sm">
+        <div class="modal__header">
+          <h2 id="habitModalTitle">New habit</h2>
+          <button class="icon-btn modal__close" aria-label="Close">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal__body">
+          <div class="form-group">
+            <label class="form-label">Name</label>
+            <input type="text" class="form-input" id="habitName" placeholder="e.g. Morning run">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Icon</label>
+            <div class="icon-picker" id="iconPicker">
+              <button type="button" class="icon-option selected" data-icon="&#x1F9D8;">&#x1F9D8;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F3C3;">&#x1F3C3;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F3CB;&#xFE0F;">&#x1F3CB;&#xFE0F;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F37A;">&#x1F37A;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F938;">&#x1F938;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F634;">&#x1F634;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F4D6;">&#x1F4D6;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F4AA;">&#x1F4AA;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F495;">&#x1F495;</button>
+              <button type="button" class="icon-option" data-icon="&#x2615;">&#x2615;</button>
+              <button type="button" class="icon-option" data-icon="&#x1F3B5;">&#x1F3B5;</button>
+              <button type="button" class="icon-option" data-icon="&#x270D;&#xFE0F;">&#x270D;&#xFE0F;</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <div class="form-radio-group" id="habitTypeGroup">
+              <label class="form-radio"><input type="radio" name="habitType" value="check" checked><span>Check-off</span></label>
+              <label class="form-radio"><input type="radio" name="habitType" value="counter"><span>Counter</span></label>
+              <label class="form-radio"><input type="radio" name="habitType" value="time"><span>Bedtime</span></label>
+            </div>
+          </div>
+          <div class="form-group" id="goalGroup">
+            <label class="form-label">Goal</label>
+            <div class="form-row">
+              <input type="number" class="form-input form-input--sm" id="habitGoal" value="3" min="1" max="7">
+              <span class="form-hint" id="goalHint">times per week</span>
+            </div>
+          </div>
+          <div class="form-group hidden" id="bonusGroup">
+            <label class="form-label">Bonus time</label>
+            <input type="time" class="form-input" id="habitBonus" value="22:30">
+          </div>
+          <input type="hidden" id="habitEditId">
+          <div class="modal__actions">
+            <button class="btn btn--outline" id="deleteHabitBtn" style="display:none">Delete</button>
+            <button class="btn btn--primary" id="saveHabitBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bedtime Input Modal -->
     <div class="modal-overlay hidden" id="bedtimeModal">
-      <div class="modal modal--small">
+      <div class="modal modal--sm">
         <div class="modal__header">
-          <h2>Log Bedtime</h2>
+          <h2>Log bedtime</h2>
           <button class="icon-btn modal__close" aria-label="Close">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div class="modal__body">
           <label class="form-label">What time did you go to bed?</label>
-          <input type="time" class="time-input" id="bedtimeInput">
+          <input type="time" class="form-input" id="bedtimeInput">
           <div class="modal__actions">
-            <button class="btn btn--secondary" id="clearBedtime">Clear</button>
+            <button class="btn btn--outline" id="clearBedtime">Clear</button>
             <button class="btn btn--primary" id="saveBedtime">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal-overlay hidden" id="confirmModal">
+      <div class="modal modal--sm">
+        <div class="modal__body" style="padding-top:28px">
+          <h2 style="margin-bottom:8px">Delete habit?</h2>
+          <p class="form-hint" id="confirmText">This will remove all tracking data for this habit.</p>
+          <div class="modal__actions">
+            <button class="btn btn--outline" id="confirmCancel">Cancel</button>
+            <button class="btn btn--danger" id="confirmDelete">Delete</button>
           </div>
         </div>
       </div>
