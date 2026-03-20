@@ -1,6 +1,47 @@
 // Bridge between firebase-sync (ES module) and app.js (global)
 import { onAuthChange, signInWithGoogle, doSignOut, getUser, pushToCloud, pullFromCloud, listenForChanges, pauseSync, resumeSync } from './firebase-sync.js';
 
+// ========== Deep Merge Logic ==========
+// Merges habits by id — union of both sets, preferring cloud for conflicts
+function mergeHabits(local, cloud) {
+  const map = new Map();
+  // Start with local habits
+  for (const h of (local || [])) map.set(h.id, h);
+  // Overlay cloud habits (cloud wins on property conflicts)
+  for (const h of (cloud || [])) map.set(h.id, { ...map.get(h.id), ...h });
+  return Array.from(map.values());
+}
+
+// Merges log entries per-date, per-habit — keeps all entries from both sides
+function mergeLog(local, cloud) {
+  const merged = { ...(local || {}) };
+  for (const [date, entries] of Object.entries(cloud || {})) {
+    if (!merged[date]) {
+      merged[date] = entries;
+    } else {
+      // Merge individual habit entries for this date
+      merged[date] = { ...merged[date], ...entries };
+    }
+  }
+  return merged;
+}
+
+// Merges reminders by habit id — union of both, cloud wins on conflicts
+function mergeReminders(local, cloud) {
+  return { ...(local || {}), ...(cloud || {}) };
+}
+
+// Full deep merge: combines local and cloud state without losing data
+function deepMerge(local, cloud) {
+  return {
+    habits: mergeHabits(local?.habits, cloud.habits),
+    log: mergeLog(local?.log, cloud.log),
+    reminders: mergeReminders(local?.reminders, cloud.reminders),
+    settings: cloud.settings || local?.settings || { theme: 'auto' },
+    _updatedAt: Math.max(cloud.updatedAt || 0, local?._updatedAt || 0),
+  };
+}
+
 // Wait for DOM
 document.addEventListener('DOMContentLoaded', () => {
   const syncBtn = document.getElementById('syncBtn');
@@ -14,24 +55,42 @@ document.addEventListener('DOMContentLoaded', () => {
   // Show sync button
   syncBtn.classList.remove('hidden');
 
+  // Hook into app.js saveState by watching localStorage changes
+  const origSetItem = localStorage.setItem.bind(localStorage);
+
   // Debounce push to cloud
   let pushTimer = null;
   function debouncedPush() {
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(() => {
+    pushTimer = setTimeout(async () => {
       const state = JSON.parse(localStorage.getItem('habitTracker') || '{}');
-      if (state.habits) pushToCloud(state);
+      if (state.habits) {
+        const timestamp = await pushToCloud(state);
+        if (timestamp) {
+          // Update local timestamp so we know our data is current
+          state._updatedAt = timestamp;
+          pauseSync();
+          origSetItem('habitTracker', JSON.stringify(state));
+          resumeSync();
+        }
+      }
     }, 1000);
   }
 
-  // Hook into app.js saveState by watching localStorage changes
-  const origSetItem = localStorage.setItem.bind(localStorage);
   localStorage.setItem = function(key, value) {
     origSetItem(key, value);
     if (key === 'habitTracker' && getUser()) {
       debouncedPush();
     }
   };
+
+  // Apply merged data to local storage and re-render
+  function applyMerged(merged) {
+    pauseSync();
+    origSetItem('habitTracker', JSON.stringify(merged));
+    resumeSync();
+    if (typeof window.reloadState === 'function') window.reloadState();
+  }
 
   // Auth state change
   onAuthChange(async (user) => {
@@ -42,32 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
       syncSignedIn.classList.remove('hidden');
       syncUserName.textContent = user.displayName || user.email;
 
-      // Pull cloud data and merge
+      // Pull cloud data and deep merge with local
       const cloudData = await pullFromCloud();
-      if (cloudData) {
-        const localRaw = localStorage.getItem('habitTracker');
-        const local = localRaw ? JSON.parse(localRaw) : null;
+      const localRaw = localStorage.getItem('habitTracker');
+      const local = localRaw ? JSON.parse(localRaw) : null;
 
-        // If cloud has data and local is default or cloud is newer, use cloud
-        if (cloudData.habits && cloudData.habits.length > 0) {
-          const localUpdated = local?._updatedAt || 0;
-          if (!local || !local.log || Object.keys(local.log).length === 0 || cloudData.updatedAt > localUpdated) {
-            // Use cloud data
-            const merged = {
-              habits: cloudData.habits,
-              log: cloudData.log,
-              reminders: cloudData.reminders,
-              settings: cloudData.settings,
-              _updatedAt: cloudData.updatedAt,
-            };
-            pauseSync();
-            origSetItem('habitTracker', JSON.stringify(merged));
-            resumeSync();
-            // Trigger re-render in app.js
-            if (typeof window.reloadState === 'function') window.reloadState();
-          }
-        }
-      } else {
+      if (cloudData && cloudData.habits && cloudData.habits.length > 0) {
+        const merged = deepMerge(local, cloudData);
+        applyMerged(merged);
+        // Push merged result back so cloud has the full picture
+        debouncedPush();
+      } else if (!cloudData && local && local.habits) {
         // No cloud data yet — push local state
         debouncedPush();
       }
@@ -76,16 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
       listenForChanges((data) => {
         const current = JSON.parse(localStorage.getItem('habitTracker') || '{}');
         if (data.updatedAt > (current._updatedAt || 0)) {
-          pauseSync();
-          origSetItem('habitTracker', JSON.stringify({
-            habits: data.habits,
-            log: data.log,
-            reminders: data.reminders,
-            settings: data.settings,
-            _updatedAt: data.updatedAt,
-          }));
-          resumeSync();
-          if (typeof window.reloadState === 'function') window.reloadState();
+          const merged = deepMerge(current, data);
+          applyMerged(merged);
         }
       });
     } else {

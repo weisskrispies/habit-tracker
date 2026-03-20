@@ -3,7 +3,7 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDoc, getDocFromServer, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDUil9w_gNKpL2giKch8_iwJ28yuYGzOVU",
@@ -22,6 +22,7 @@ const provider = new GoogleAuthProvider();
 let currentUser = null;
 let unsubscribe = null;
 let syncPaused = false;
+let lastPushTimestamp = 0;
 
 // ========== Auth ==========
 export function onAuthChange(callback) {
@@ -59,16 +60,20 @@ export async function pushToCloud(state) {
   if (!currentUser || syncPaused) return;
   const ref = userDocRef();
   if (!ref) return;
+  const now = Date.now();
+  lastPushTimestamp = now;
   try {
     await setDoc(ref, {
       habits: JSON.stringify(state.habits),
       log: JSON.stringify(state.log),
       reminders: JSON.stringify(state.reminders),
       settings: JSON.stringify(state.settings),
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+    return now;
   } catch (e) {
     console.error('Push to cloud failed:', e);
+    return null;
   }
 }
 
@@ -77,12 +82,22 @@ export async function pullFromCloud() {
   const ref = userDocRef();
   if (!ref) return null;
   try {
-    const snap = await getDoc(ref);
+    // Always fetch from server — never use Firestore's offline cache
+    const snap = await getDocFromServer(ref);
     if (snap.exists()) {
       return parseCloudData(snap.data());
     }
   } catch (e) {
-    console.error('Pull from cloud failed:', e);
+    // Offline fallback: try cached data
+    console.warn('Server fetch failed, trying cache:', e.message);
+    try {
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        return parseCloudData(snap.data());
+      }
+    } catch (e2) {
+      console.error('Pull from cloud failed entirely:', e2);
+    }
   }
   return null;
 }
@@ -107,11 +122,18 @@ export function listenForChanges(callback) {
   if (!currentUser) return;
   const ref = userDocRef();
   if (!ref) return;
-  unsubscribe = onSnapshot(ref, (snap) => {
-    if (snap.exists() && !syncPaused) {
-      const data = parseCloudData(snap.data());
-      if (data) callback(data);
-    }
+  // includeMetadataChanges so we get notified when fromCache changes
+  unsubscribe = onSnapshot(ref, { includeMetadataChanges: true }, (snap) => {
+    if (!snap.exists() || syncPaused) return;
+    // Ignore local pending writes
+    if (snap.metadata.hasPendingWrites) return;
+    // Ignore stale data from Firestore offline cache — wait for server
+    if (snap.metadata.fromCache) return;
+    const data = parseCloudData(snap.data());
+    if (!data) return;
+    // Skip if this is the echo of our own push
+    if (data.updatedAt === lastPushTimestamp) return;
+    callback(data);
   });
 }
 

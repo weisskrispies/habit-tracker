@@ -1,4 +1,4 @@
-const CACHE_NAME = 'habit-tracker-v3';
+const CACHE_NAME = 'habit-tracker-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -27,13 +27,25 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch: serve from cache, fallback to network
+// Fetch: skip caching for Firebase/Firestore API calls, serve assets cache-first
 self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+
+  // Never cache Firebase API calls — these must always hit the network
+  if (url.includes('firestore.googleapis.com') ||
+      url.includes('identitytoolkit.googleapis.com') ||
+      url.includes('securetoken.googleapis.com') ||
+      url.includes('firebaseinstallations.googleapis.com')) {
+    return; // Let the browser handle it normally
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetched = fetch(event.request).then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
         return response;
       }).catch(() => cached);
       return cached || fetched;
