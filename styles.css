@@ -114,13 +114,47 @@ body {
 [data-theme="dark"] .theme-icon-light { display: none; }
 
 /* ========== Date Strip ========== */
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.date-nav__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition);
+}
+
+.date-nav__arrow:hover {
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+
+.date-nav__arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .date-strip {
   display: flex;
+  flex: 1;
   gap: 4px;
-  padding: 12px 0;
+  padding: 8px 0;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  justify-content: center;
 }
 
 .date-strip::-webkit-scrollbar { display: none; }
@@ -181,6 +215,11 @@ body {
 }
 
 .date-strip__day .date-strip__day-num { position: relative; }
+
+.date-strip__day.today:not(.active) .date-strip__day-num {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 
 /* ========== Tabs ========== */
 .tabs {

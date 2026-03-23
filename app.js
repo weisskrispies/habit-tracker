@@ -220,9 +220,11 @@ function renderDateStrip() {
   const week = getWeekDates(currentDate);
   const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   strip.innerHTML = week.map((d, i) => {
+    const today = new Date(); resetToMidnight(today);
     const active = isSameDay(d, currentDate);
+    const isActualToday = isSameDay(d, today);
     const hasData = state.habits.some(h => isDone(h, getLog(h.id, fmtKey(d))));
-    return `<button class="date-strip__day ${active ? 'active' : ''} ${hasData ? 'has-data' : ''}" data-date="${fmtKey(d)}">
+    return `<button class="date-strip__day ${active ? 'active' : ''} ${isActualToday ? 'today' : ''} ${hasData ? 'has-data' : ''}" data-date="${fmtKey(d)}">
       <span class="date-strip__day-label">${labels[i]}</span>
       <span class="date-strip__day-num">${d.getDate()}</span>
     </button>`;
@@ -234,6 +236,12 @@ function renderDateStrip() {
       render();
     });
   });
+
+  // Disable next-week arrow if already on the current (or future) week
+  const today = new Date(); resetToMidnight(today);
+  const currentWeekEnd = week[6];
+  const nextBtn = document.getElementById('nextWeekBtn');
+  if (nextBtn) nextBtn.disabled = currentWeekEnd >= today;
 }
 
 function renderToday() {
@@ -700,6 +708,29 @@ function init() {
   document.getElementById('themeBtn').addEventListener('click', toggleTheme);
   document.getElementById('settingsBtn').addEventListener('click', openSettings);
   document.getElementById('addHabitBtn').addEventListener('click', openAddHabit);
+
+  // Tap header date to jump back to today
+  document.getElementById('dateDisplay').addEventListener('click', () => {
+    currentDate = new Date(); resetToMidnight(currentDate);
+    render();
+  });
+
+  // Week navigation arrows
+  document.getElementById('prevWeekBtn').addEventListener('click', () => {
+    currentDate.setDate(currentDate.getDate() - 7);
+    render();
+  });
+  document.getElementById('nextWeekBtn').addEventListener('click', () => {
+    const today = new Date(); resetToMidnight(today);
+    const next = new Date(currentDate);
+    next.setDate(next.getDate() + 7);
+    if (next <= today) {
+      currentDate = next;
+    } else {
+      currentDate = today;
+    }
+    render();
+  });
 
   // Close modals
   document.querySelectorAll('.modal__close').forEach(btn => {
