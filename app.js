@@ -3,7 +3,7 @@ const DEFAULT_HABITS = [
   { id: 'meditation', name: 'Meditation', icon: '\u{1F9D8}', type: 'check', goalType: 'weekly', goalValue: 4 },
   { id: 'cardio', name: 'Cardio', icon: '\u{1F3C3}', type: 'check', goalType: 'weekly', goalValue: 3 },
   { id: 'strength', name: 'Strength', icon: '\u{1F3CB}\u{FE0F}', type: 'check', goalType: 'weekly', goalValue: 3 },
-  { id: 'drinks', name: 'Drinks', icon: '\u{1F37A}', type: 'counter', goalType: 'daily_max', goalValue: 2 },
+  { id: 'drinks', name: 'Drinks', icon: '\u{1F37A}', type: 'counter', goalType: 'weekly_max', goalValue: 10 },
   { id: 'stretching', name: 'Stretching', icon: '\u{1F938}', type: 'check', goalType: 'weekly', goalValue: 3 },
   { id: 'sleep', name: 'Bedtime', icon: '\u{1F634}', type: 'time', goalType: 'daily_before', goalValue: '23:00', bonusValue: '22:30' },
 ];
@@ -36,6 +36,12 @@ function loadState() {
       if (!p.log) p.log = {};
       if (!p.reminders) p.reminders = DEFAULT_REMINDERS;
       if (!p.settings) p.settings = { theme: 'auto' };
+      // Migrate drinks from daily_max to weekly_max
+      const drinks = p.habits.find(h => h.id === 'drinks');
+      if (drinks && drinks.goalType === 'daily_max') {
+        drinks.goalType = 'weekly_max';
+        drinks.goalValue = 10;
+      }
       return p;
     }
   } catch (e) { /* ignore */ }
@@ -97,6 +103,13 @@ function weekCount(habit, ref) {
   }, 0);
 }
 
+function weekTotal(habit, ref) {
+  return getWeekDates(ref).reduce((sum, d) => {
+    const e = getLog(habit.id, fmtKey(d));
+    return sum + (e?.value || 0);
+  }, 0);
+}
+
 function isDone(habit, entry) {
   if (!entry) return false;
   if (habit.type === 'check') return entry.value === true;
@@ -105,10 +118,17 @@ function isDone(habit, entry) {
   return false;
 }
 
-function isGoalMet(habit, entry) {
+function isGoalMet(habit, entry, refDate) {
   if (!entry) return false;
   if (habit.type === 'check') return entry.value === true;
-  if (habit.type === 'counter') return entry.value <= habit.goalValue;
+  if (habit.type === 'counter') {
+    if (habit.goalType === 'weekly_max') {
+      // For weekly counters, any logged day counts as "done" for streak purposes
+      // The goal is evaluated at week level
+      return true;
+    }
+    return entry.value <= habit.goalValue;
+  }
   if (habit.type === 'time') return entry.value && entry.value <= habit.goalValue;
   return false;
 }
@@ -118,7 +138,7 @@ function isBonus(habit, entry) {
 }
 
 function calcStreak(habit) {
-  return habit.goalType === 'weekly' ? calcWeeklyStreak(habit) : calcDailyStreak(habit);
+  return (habit.goalType === 'weekly' || habit.goalType === 'weekly_max') ? calcWeeklyStreak(habit) : calcDailyStreak(habit);
 }
 
 function calcDailyStreak(habit) {
@@ -136,16 +156,27 @@ function calcWeeklyStreak(habit) {
   let streak = 0;
   const d = new Date(); resetToMidnight(d);
   let ws = getWeekStart(d);
-  if (weekCount(habit, ws) < habit.goalValue) ws.setDate(ws.getDate() - 7);
-  while (true) {
-    if (weekCount(habit, ws) < habit.goalValue) break;
-    streak++; ws.setDate(ws.getDate() - 7);
+  if (habit.goalType === 'weekly_max') {
+    if (weekTotal(habit, ws) > habit.goalValue) ws.setDate(ws.getDate() - 7);
+    while (true) {
+      if (weekTotal(habit, ws) > habit.goalValue) break;
+      // Need at least some data to count a week
+      const hasData = getWeekDates(ws).some(dt => getLog(habit.id, fmtKey(dt)));
+      if (!hasData) break;
+      streak++; ws.setDate(ws.getDate() - 7);
+    }
+  } else {
+    if (weekCount(habit, ws) < habit.goalValue) ws.setDate(ws.getDate() - 7);
+    while (true) {
+      if (weekCount(habit, ws) < habit.goalValue) break;
+      streak++; ws.setDate(ws.getDate() - 7);
+    }
   }
   return streak;
 }
 
 function calcBestStreak(habit) {
-  if (habit.goalType === 'weekly') return calcBestWeeklyStreak(habit);
+  if (habit.goalType === 'weekly' || habit.goalType === 'weekly_max') return calcBestWeeklyStreak(habit);
   return calcBestDailyStreak(habit);
 }
 
@@ -170,7 +201,14 @@ function calcBestWeeklyStreak(habit) {
   const d = getWeekStart(new Date(allDates[0]));
   const end = new Date();
   while (d <= end) {
-    if (weekCount(habit, d) >= habit.goalValue) { cur++; if (cur > best) best = cur; }
+    let met;
+    if (habit.goalType === 'weekly_max') {
+      const hasData = getWeekDates(d).some(dt => getLog(habit.id, fmtKey(dt)));
+      met = hasData && weekTotal(habit, d) <= habit.goalValue;
+    } else {
+      met = weekCount(habit, d) >= habit.goalValue;
+    }
+    if (met) { cur++; if (cur > best) best = cur; }
     else cur = 0;
     d.setDate(d.getDate() + 7);
   }
@@ -178,6 +216,18 @@ function calcBestWeeklyStreak(habit) {
 }
 
 function completionRate(habit, days = 30) {
+  if (habit.goalType === 'weekly_max') {
+    // For weekly max, rate = weeks at or under goal out of ~4 weeks
+    let met = 0, weeks = 0;
+    const d = new Date(); resetToMidnight(d);
+    let ws = getWeekStart(d);
+    for (let w = 0; w < 4; w++) {
+      const hasData = getWeekDates(ws).some(dt => getLog(habit.id, fmtKey(dt)));
+      if (hasData) { weeks++; if (weekTotal(habit, ws) <= habit.goalValue) met++; }
+      ws.setDate(ws.getDate() - 7);
+    }
+    return weeks > 0 ? Math.round((met / weeks) * 100) : 0;
+  }
   let met = 0;
   const d = new Date(); resetToMidnight(d);
   for (let i = 0; i < days; i++) {
@@ -279,9 +329,17 @@ function renderCard(habit, entry, wc, streak) {
       <span class="counter-value">${val}</span>
       <button class="counter-btn" data-action="inc" data-habit="${habit.id}">+</button>
     </div>`;
-    const cls = val > habit.goalValue ? 'badge--red' : val === habit.goalValue ? 'badge--gold' : 'badge--green';
-    meta = `<span class="badge ${cls}">${val}/${habit.goalValue}</span>`;
-    if (streak > 0) meta += `<span class="habit-card__streak">${streak} ${streakUnit}</span>`;
+    if (habit.goalType === 'weekly_max') {
+      const wt = weekTotal(habit, currentDate);
+      const cls = wt > habit.goalValue ? 'badge--red' : wt === habit.goalValue ? 'badge--gold' : 'badge--green';
+      meta = `<span class="badge ${cls}">${wt}/${habit.goalValue} wk</span>`;
+      const streakUnit = 'wk';
+      if (streak > 0) meta += `<span class="habit-card__streak">${streak} ${streakUnit}</span>`;
+    } else {
+      const cls = val > habit.goalValue ? 'badge--red' : val === habit.goalValue ? 'badge--gold' : 'badge--green';
+      meta = `<span class="badge ${cls}">${val}/${habit.goalValue}</span>`;
+      if (streak > 0) meta += `<span class="habit-card__streak">${streak} ${streakUnit}</span>`;
+    }
   } else if (habit.type === 'time') {
     const val = entry?.value;
     const bon = isBonus(habit, entry);
@@ -358,7 +416,7 @@ function renderWeek() {
       if (habit.type === 'check') {
         if (e?.value === true) { cls += ' completed'; txt = '\u2713'; cnt++; }
       } else if (habit.type === 'counter') {
-        if (e) { txt = e.value; cls += e.value > habit.goalValue ? ' over' : ' completed'; if (e.value <= habit.goalValue) cnt++; }
+        if (e) { txt = e.value; cls += ' completed'; cnt++; }
       } else if (habit.type === 'time') {
         if (e?.value) {
           if (isBonus(habit, e)) { cls += ' bonus'; txt = '\u2605'; cnt++; }
@@ -370,13 +428,22 @@ function renderWeek() {
       return `<div class="week-day"><span class="week-day__label">${labels[i]}</span><div class="${cls}">${txt}</div></div>`;
     }).join('');
 
-    const goal = habit.goalType === 'weekly' ? habit.goalValue : 7;
-    const pct = Math.min(100, (cnt / goal) * 100);
+    let goalLabel, pct;
+    if (habit.goalType === 'weekly_max') {
+      const wt = weekTotal(habit, currentDate);
+      pct = Math.min(100, (wt / habit.goalValue) * 100);
+      const met = wt <= habit.goalValue;
+      goalLabel = `<span class="week-habit__goal ${met ? 'met' : ''}">${wt}/${habit.goalValue}</span>`;
+    } else {
+      const goal = habit.goalType === 'weekly' ? habit.goalValue : 7;
+      pct = Math.min(100, (cnt / goal) * 100);
+      goalLabel = `<span class="week-habit__goal ${cnt >= goal ? 'met' : ''}">${cnt}/${goal}</span>`;
+    }
 
     return `<div class="week-habit">
       <div class="week-habit__header">
         <div class="week-habit__name"><span>${habit.icon}</span> ${habit.name}</div>
-        <span class="week-habit__goal ${cnt >= goal ? 'met' : ''}">${cnt}/${goal}</span>
+        ${goalLabel}
       </div>
       <div class="week-days">${days}</div>
       <div class="week-progress-bar"><div class="week-progress-bar__fill ${pct >= 100 ? 'exceeded' : ''}" style="width:${pct}%"></div></div>
@@ -395,11 +462,10 @@ function renderStats() {
   const totalStreaks = state.habits.reduce((s, h) => s + calcStreak(h), 0);
 
   const drinksH = state.habits.find(h => h.id === 'drinks' || h.type === 'counter');
-  let dAvg = '--';
+  let drinksLabel = '--';
   if (drinksH) {
-    const wk = getWeekDates(now); let t = 0, d = 0;
-    wk.forEach(dt => { const e = getLog(drinksH.id, fmtKey(dt)); if (e) { t += e.value || 0; d++; } });
-    dAvg = d > 0 ? (t / d).toFixed(1) : '0';
+    const wt = weekTotal(drinksH, now);
+    drinksLabel = `${wt}`;
   }
 
   const streaks = state.habits.map(h => {
@@ -429,7 +495,7 @@ function renderStats() {
       <div class="stat-summary">
         <div class="stat-summary__item"><div class="stat-summary__number green">${todayDone}/${state.habits.length}</div><div class="stat-summary__label">Today</div></div>
         <div class="stat-summary__item"><div class="stat-summary__number gold">${totalStreaks}</div><div class="stat-summary__label">Streaks</div></div>
-        <div class="stat-summary__item"><div class="stat-summary__number">${dAvg}</div><div class="stat-summary__label">${drinksH ? drinksH.name + '/day' : ''}</div></div>
+        <div class="stat-summary__item"><div class="stat-summary__number">${drinksLabel}</div><div class="stat-summary__label">${drinksH ? drinksH.name + '/wk' : ''}</div></div>
       </div>
     </div>
     <div class="stat-card"><div class="stat-card__title">Streaks</div>${streaks}</div>
@@ -491,8 +557,8 @@ function updateHabitFormType() {
     goalInput.type = 'number'; goalInput.min = 1; goalInput.max = 7;
     goalHint.textContent = 'times per week';
   } else if (type === 'counter') {
-    goalInput.type = 'number'; goalInput.min = 0; goalInput.max = 20;
-    goalHint.textContent = 'max per day';
+    goalInput.type = 'number'; goalInput.min = 0; goalInput.max = 50;
+    goalHint.textContent = 'max per week';
   } else if (type === 'time') {
     goalInput.type = 'time';
     goalHint.textContent = 'bed by';
@@ -514,8 +580,8 @@ function saveHabit() {
     goalType = 'weekly';
     goalValue = parseInt(goalInput.value) || 3;
   } else if (type === 'counter') {
-    goalType = 'daily_max';
-    goalValue = parseInt(goalInput.value) || 2;
+    goalType = 'weekly_max';
+    goalValue = parseInt(goalInput.value) || 10;
   } else {
     goalType = 'daily_before';
     goalValue = goalInput.value || '23:00';
@@ -588,7 +654,7 @@ function renderGoals() {
     if (habit.type === 'check') {
       return `<div class="goal-item"><span class="goal-item__label">${habit.icon} ${habit.name}</span><div class="goal-item__control"><input type="number" class="goal-input" min="1" max="7" value="${habit.goalValue}" data-goal="${habit.id}"><span class="goal-unit">x/wk</span></div></div>`;
     } else if (habit.type === 'counter') {
-      return `<div class="goal-item"><span class="goal-item__label">${habit.icon} ${habit.name}</span><div class="goal-item__control"><input type="number" class="goal-input" min="0" max="20" value="${habit.goalValue}" data-goal="${habit.id}"><span class="goal-unit">max/day</span></div></div>`;
+      return `<div class="goal-item"><span class="goal-item__label">${habit.icon} ${habit.name}</span><div class="goal-item__control"><input type="number" class="goal-input" min="0" max="50" value="${habit.goalValue}" data-goal="${habit.id}"><span class="goal-unit">max/wk</span></div></div>`;
     } else {
       return `<div class="goal-item"><span class="goal-item__label">${habit.icon} Goal</span><div class="goal-item__control"><input type="time" class="goal-input goal-input--time" value="${habit.goalValue}" data-goal="${habit.id}"></div></div>
         <div class="goal-item"><span class="goal-item__label">${habit.icon} Bonus</span><div class="goal-item__control"><input type="time" class="goal-input goal-input--time" value="${habit.bonusValue || ''}" data-goal-bonus="${habit.id}"></div></div>`;
@@ -683,22 +749,35 @@ function importData(file) {
 }
 
 // ========== Theme ==========
+function getPSTHour() {
+  const now = new Date();
+  const pst = new Date(now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  return pst.getHours();
+}
+
+function isNightTimePST() {
+  const h = getPSTHour();
+  return h >= 19 || h < 7; // dark from 7pm to 7am PST
+}
+
+function applyAutoTheme() {
+  const theme = isNightTimePST() ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+let autoThemeInterval;
+
 function initTheme() {
-  const s = state.settings.theme;
-  if (s === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-  else if (s === 'light') document.documentElement.setAttribute('data-theme', 'light');
-  else {
-    const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  }
+  applyAutoTheme();
+  // Re-check every minute so it transitions at the right time
+  autoThemeInterval = setInterval(applyAutoTheme, 60000);
 }
 
 function toggleTheme() {
+  // Manual toggle still works as a temporary override until next auto-check
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
-  state.settings.theme = next;
-  saveState();
 }
 
 // ========== Init ==========
