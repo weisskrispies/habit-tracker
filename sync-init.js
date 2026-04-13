@@ -2,14 +2,20 @@
 import { onAuthChange, signInWithGoogle, doSignOut, getUser, pushToCloud, pullFromCloud, listenForChanges, pauseSync, resumeSync } from './firebase-sync.js';
 
 // ========== Deep Merge Logic ==========
-// Merges habits by id — union of both sets, preferring cloud for conflicts
+// Merges habits by id — local wins for existing habits, cloud adds new ones
 function mergeHabits(local, cloud) {
   const map = new Map();
-  // Start with local habits
+  // Cloud provides the base (catches habits added on other devices)
+  for (const h of (cloud || [])) map.set(h.id, h);
+  // Local always wins for existing habits — preserves goal changes, edits, etc.
   for (const h of (local || [])) map.set(h.id, h);
-  // Overlay cloud habits (cloud wins on property conflicts)
-  for (const h of (cloud || [])) map.set(h.id, { ...map.get(h.id), ...h });
-  return Array.from(map.values());
+  // Preserve local ordering, append any cloud-only habits at the end
+  const localIds = new Set((local || []).map(h => h.id));
+  const result = [...(local || [])];
+  for (const h of (cloud || [])) {
+    if (!localIds.has(h.id)) result.push(h);
+  }
+  return result;
 }
 
 // Merges log entries per-date, per-habit — keeps all entries from both sides
@@ -19,8 +25,19 @@ function mergeLog(local, cloud) {
     if (!merged[date]) {
       merged[date] = entries;
     } else {
-      // Merge individual habit entries for this date
-      merged[date] = { ...merged[date], ...entries };
+      const day = { ...merged[date] };
+      for (const [hid, entry] of Object.entries(entries)) {
+        if (!day[hid]) {
+          day[hid] = entry;
+        } else if (typeof entry?.value === 'number' && typeof day[hid]?.value === 'number') {
+          // For counters, keep the higher value — never lose a logged drink
+          day[hid] = { ...day[hid], value: Math.max(day[hid].value, entry.value) };
+        } else {
+          // For booleans/strings (check-offs, bedtime), cloud wins
+          day[hid] = entry;
+        }
+      }
+      merged[date] = day;
     }
   }
   return merged;
@@ -78,6 +95,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   localStorage.setItem = function(key, value) {
+    if (key === 'habitTracker') {
+      // Stamp _updatedAt immediately so incoming snapshots with older timestamps
+      // don't overwrite a local change that hasn't been pushed yet
+      try {
+        const parsed = JSON.parse(value);
+        if (!parsed._updatedAt || parsed._updatedAt < Date.now() - 100) {
+          parsed._updatedAt = Date.now();
+          value = JSON.stringify(parsed);
+        }
+      } catch (e) {}
+    }
     origSetItem(key, value);
     if (key === 'habitTracker' && getUser()) {
       debouncedPush();
