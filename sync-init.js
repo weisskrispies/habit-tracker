@@ -3,17 +3,15 @@ import { onAuthChange, signInWithGoogle, doSignOut, getUser, pushToCloud, pullFr
 
 // ========== Deep Merge Logic ==========
 // Merges habits by id — local wins for existing habits, cloud adds new ones
-function mergeHabits(local, cloud) {
-  const map = new Map();
-  // Cloud provides the base (catches habits added on other devices)
-  for (const h of (cloud || [])) map.set(h.id, h);
-  // Local always wins for existing habits — preserves goal changes, edits, etc.
-  for (const h of (local || [])) map.set(h.id, h);
-  // Preserve local ordering, append any cloud-only habits at the end
-  const localIds = new Set((local || []).map(h => h.id));
-  const result = [...(local || [])];
+// deletedIds is the combined tombstone list — never resurrect deleted habits
+function mergeHabits(local, cloud, deletedIds) {
+  const deleted = new Set(deletedIds || []);
+  // Start with local (preserves goal changes, edits)
+  const result = (local || []).filter(h => !deleted.has(h.id));
+  const localIds = new Set(result.map(h => h.id));
+  // Append habits that only exist on cloud (added on another device)
   for (const h of (cloud || [])) {
-    if (!localIds.has(h.id)) result.push(h);
+    if (!localIds.has(h.id) && !deleted.has(h.id)) result.push(h);
   }
   return result;
 }
@@ -50,11 +48,17 @@ function mergeReminders(local, cloud) {
 
 // Full deep merge: combines local and cloud state without losing data
 function deepMerge(local, cloud) {
+  // Union of both tombstone lists — a deletion on any device is permanent
+  const deletedHabits = [...new Set([
+    ...(local?._deletedHabits || []),
+    ...(cloud.deletedHabits || []),
+  ])];
   return {
-    habits: mergeHabits(local?.habits, cloud.habits),
+    habits: mergeHabits(local?.habits, cloud.habits, deletedHabits),
     log: mergeLog(local?.log, cloud.log),
     reminders: mergeReminders(local?.reminders, cloud.reminders),
     settings: cloud.settings || local?.settings || { theme: 'auto' },
+    _deletedHabits: deletedHabits,
     _updatedAt: Math.max(cloud.updatedAt || 0, local?._updatedAt || 0),
   };
 }

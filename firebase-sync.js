@@ -68,6 +68,7 @@ export async function pushToCloud(state) {
       log: JSON.stringify(state.log),
       reminders: JSON.stringify(state.reminders),
       settings: JSON.stringify(state.settings),
+      deletedHabits: JSON.stringify(state._deletedHabits || []),
       updatedAt: now,
     });
     return now;
@@ -109,6 +110,7 @@ function parseCloudData(data) {
       log: JSON.parse(data.log),
       reminders: JSON.parse(data.reminders),
       settings: JSON.parse(data.settings),
+      deletedHabits: data.deletedHabits ? JSON.parse(data.deletedHabits) : [],
       updatedAt: data.updatedAt,
     };
   } catch (e) {

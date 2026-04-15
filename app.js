@@ -36,6 +36,7 @@ function loadState() {
       if (!p.log) p.log = {};
       if (!p.reminders) p.reminders = DEFAULT_REMINDERS;
       if (!p.settings) p.settings = { theme: 'auto' };
+      if (!p._deletedHabits) p._deletedHabits = [];
       // Migrate drinks from daily_max to weekly_max
       const drinks = p.habits.find(h => h.id === 'drinks');
       if (drinks && drinks.goalType === 'daily_max') {
@@ -45,7 +46,7 @@ function loadState() {
       return p;
     }
   } catch (e) { /* ignore */ }
-  return { habits: DEFAULT_HABITS, log: {}, reminders: DEFAULT_REMINDERS, settings: { theme: 'auto' } };
+  return { habits: DEFAULT_HABITS, log: {}, reminders: DEFAULT_REMINDERS, settings: { theme: 'auto' }, _deletedHabits: [] };
 }
 
 function saveState() { localStorage.setItem('habitTracker', JSON.stringify(state)); }
@@ -621,6 +622,11 @@ function confirmDeleteHabit() {
 function doDelete() {
   if (!pendingDeleteId) return;
   state.habits = state.habits.filter(h => h.id !== pendingDeleteId);
+  // Record tombstone so sync doesn't resurrect it on other devices
+  if (!state._deletedHabits) state._deletedHabits = [];
+  if (!state._deletedHabits.includes(pendingDeleteId)) {
+    state._deletedHabits.push(pendingDeleteId);
+  }
   // Clean log entries
   Object.keys(state.log).forEach(dk => { delete state.log[dk][pendingDeleteId]; });
   delete state.reminders[pendingDeleteId];
@@ -705,9 +711,25 @@ function renderReminders() {
 
 // ========== Notifications ==========
 async function requestNotif() {
-  if (!('Notification' in window)) { alert('Not supported.'); return; }
+  if (!('Notification' in window)) { alert('Notifications are not supported in this browser.'); return; }
   const r = await Notification.requestPermission();
-  if (r === 'granted') alert('Notifications enabled!');
+  if (r === 'granted') {
+    scheduleReminders();
+  } else {
+    alert('Notification permission denied. Enable it in your browser/phone settings.');
+  }
+}
+
+function showNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  // Prefer SW notification (works when app is backgrounded)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(title, { body, icon: 'apple-touch-icon.png', badge: 'favicon.png' });
+    }).catch(() => new Notification(title, { body }));
+  } else {
+    new Notification(title, { body });
+  }
 }
 
 function scheduleReminders() {
@@ -720,11 +742,17 @@ function scheduleReminders() {
     const [h, m] = rem.time.split(':').map(Number);
     const t = new Date(); t.setHours(h, m, 0, 0);
     if (t <= now) t.setDate(t.getDate() + 1);
+    const delay = t - now;
+    // Skip if more than 24h away (will reschedule on next app open)
+    if (delay > 86400000) return;
     reminderTimers[id] = setTimeout(() => {
       const habit = state.habits.find(x => x.id === id);
-      new Notification(habit ? `Time for ${habit.name}!` : 'Log your habits!', { body: habit ? `Don't forget to ${habit.name.toLowerCase()} today.` : 'Take a moment to log your habits.', icon: habit?.icon });
+      showNotification(
+        habit ? `Time for ${habit.name}!` : 'Log your habits!',
+        habit ? `Don't forget to log ${habit.name.toLowerCase()} today.` : 'Take a moment to log your habits.'
+      );
       scheduleReminders();
-    }, t - now);
+    }, delay);
   });
 }
 
@@ -870,6 +898,11 @@ function init() {
   document.getElementById('requestNotifBtn').addEventListener('click', requestNotif);
   document.getElementById('exportBtn').addEventListener('click', exportData);
   document.getElementById('importInput').addEventListener('change', (e) => { if (e.target.files[0]) importData(e.target.files[0]); });
+
+  // Reschedule reminders when app comes back to foreground
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') scheduleReminders();
+  });
 
   scheduleReminders();
   render();

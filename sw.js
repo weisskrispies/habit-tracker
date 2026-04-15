@@ -1,4 +1,4 @@
-const CACHE_NAME = 'habit-tracker-v7';
+const CACHE_NAME = 'habit-tracker-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -25,6 +25,19 @@ self.addEventListener('activate', (event) => {
     )
   );
   self.clients.claim();
+});
+
+// Notification click — focus or open the app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ('focus' in client) return client.focus();
+      }
+      return clients.openWindow('./');
+    })
+  );
 });
 
 // Fetch: skip caching for Firebase/Firestore API calls, serve assets cache-first
